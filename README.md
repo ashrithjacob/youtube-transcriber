@@ -102,3 +102,4 @@ Rules that keep the boundary clean:
 - **Slow first run** — that's the one-time model download (~0.7 GB int8). Watch stderr for progress.
 - **Out-of-memory on very long videos** — VAD already caps segments at 60 s, so memory stays flat; if you still hit limits, close other apps or use `--quantization int8` (the default).
 # youtube-transcriberr
+# youtube-transcriber
