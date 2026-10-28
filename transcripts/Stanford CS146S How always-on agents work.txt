@@ -1,0 +1,1281 @@
+So as mentioned, I'm Lee. We're gonna talk a little bit today about how this new category of
+
+Always on proactive.
+
+persistent agents work and kind of give you some of the understandings of the building blocks for how these are made.
+
+Um just as a
+
+You know, fun statement up here, some of the things we'll talk about are in progress. We're working on it at SpaceX.
+
+Um
+
+And
+
+In week one, you all built this very
+
+Kind of.
+
+simple harness that helps you understand the core idea, which is that you have a model,
+
+It can call tools in a loop.
+
+And that's actually very powerful. It unlocks a lot of new capabilities for the models.
+
+Um but it does come with some drawbacks, notably you close your laptop and the process stops. It's no longer running.
+
+Uh
+
+And I want to talk about how you can take this
+
+Simple idea, it's very powerful for how to get more out of models, and extend it to
+
+This new type of agent, which is
+
+an always on agent. So rather than just running in your terminal, this can run on a server. It can run in the cloud. You can close your computer, uh, it can restart, it can survive crashes, for example.
+
+This agent has its own computer.
+
+So not just your laptop, but a Linux machine in the cloud where it has its own desktop, files, browser, and more, maybe some 3D apps.
+
+Um it can save files on the machine. It can
+
+understand more about your progress over time and build up a memory of how you work with it.
+
+Um
+
+Unlike
+
+Eh
+
+harnessing the terminal that is responding to every message that you send.
+
+This type of always on agent is more like a colleague where it doesn't always
+
+immediately send you a message. It knows when to be quiet.
+
+Sometimes it might just want to work in the background a little bit and
+
+only come back to you when there's an important update.
+
+Uh and it can be triggered more than just you typing. So it's not just you prompting it in the terminal. Maybe there was a Slack message or an email or some other type of event.
+
+that wakes this agent to go do work.
+
+Um
+
+And ideally
+
+The hope with these type of always on agents is that they can do work over very long periods of time.
+
+Not just hours or days, but maybe even weeks or months, and that just requires a little bit of a different architecture, which we'll get into.
+
+So we're gonna go.
+
+Uh decently in depth on how we built this architecture, how we built the harness.
+
+um kind of what's got us here today and where we're going in the future.
+
+and we'll get into some of the specifics of
+
+how we've engineered this system.
+
+to be proactive, to be persistent, and to follow instructions very well. And of course time at the end for questions.
+
+if you all wanna ask anything about this or uh anything outside of uh what we've covered today.
+
+So first
+
+how we got here.
+
+There's kind of been four eras of developers working with AI so far, I would say. The first one was copy pasting code out of ChatGPT.
+
+and putting it into your editor of choice which feels like
+
+you know, decades ago at this point, but it was really only a few years ago.
+
+Uh
+
+And then on the model started to get better at being able to have kind of that simplified harness we talked about uh in you know in the last uh lecture.
+
+Uh they were able to edit files, run shell commands, kind of
+
+have this very simple interface for how you work with them in the terminal. And this really took off because
+
+all of a sudden the model had this new capability where it could go do more proactive work for you.
+
+and be more, you know, productive.
+
+Then this third era was
+
+Taking the
+
+coding agents and where they were kind of simple to start and giving them these dedicated apps.
+
+And at this point, people were starting to run many agents in parallel. Maybe they're running them in the cloud, not just on their machine.
+
+Uh
+
+But still at this point
+
+you were kind of the bottleneck in that you were reviewing every command that they were running. You wanted to make sure every shell command was just right. You're kind of really watching them and being in the loop on everything.
+
+And now with improvements in models, in harnesses, and products, we're now in this new era where
+
+you're starting to have these always on agents and they can kind of run ambiently in the background where they have their own computer, they have their own memory, they learn new skills on the job and they keep working after you go, you know, go to bed or go do other work.
+
+A good example of this is
+
+We've kind of moved away from this world of prompting an agent every single day, although we still do that sometimes. But you can set up agents where it will kind of just run in the background. So maybe in the the before times it was you would prompt an agent, you would wait, you prompt an agent, you would wait.
+
+And if it asked you to run a shell command, you'd have to approve or disallow that command.
+
+Uh and now instead of kind of cuing commands.
+
+You can steer the agent.
+
+And you might say, Hey, go check this thread and then immediately after, Oh, by the way, you know
+
+Actually go do that on Thursday.
+
+And prior generations of models would get kind of confused.
+
+when you would immediately interrupt it and give it some other command. But now they kind of understand just like how you might ramble on talking to a friend and they can kind of parse that these two things are related.
+
+The models and the harnesses can now handle that.
+
+And if you say, Hey, go send this email, go send this slack message.
+
+Um
+
+There are additional safety checks in place, which a lot of companies are calling auto review.
+
+Which is essentially a separate AI model.
+
+that's checking all of the commands that get run.
+
+So
+
+You know, kind of funnily enough, that's actually more secure than the fatigue of having to watch hundreds of shell commands and improve each one. We've kind of reached the point where if you did a blind test with what the AI model's checking on the commands and what a human's checking on the commands, most of the time the the model's actually doing a better job.
+
+Um
+
+Kind of paradoxically.
+
+But as the models have gotten better, the interface has gotten quite a bit more simple, actually.
+
+And
+
+This
+
+Type of always on agent we're calling a bot.
+
+But as you'll notice there's actually quite a few of these new types of
+
+products popping up right now and gaining a lot of traction. And I think
+
+The main reason is because
+
+We all know how to text, you know, everyone knows how to text, everyone is pretty proficient with using their phones, and we've kind of distilled down this way of working with AI that feels like you're just texting a friend.
+
+but it can actually go and do real work for you.
+
+It's not just answering questions in a QA style setting anymore. It's actually going and doing longer tasks like you would hand off to a co-worker, for example.
+
+Um so there's been a few changes specifically in the models.
+
+Yeah.
+
+enabled this to happen.
+
+Um I'll go over six, but there's you know quite a bit more.
+
+The first one is that the models just
+
+over the past year or two years have really gotten better at being able to follow instructions over a longer period of time where they don't
+
+get confused or make mistakes and now models can pretty confidently run for
+
+hours or days with the right uh compression and compaction, which we'll talk about in a little bit.
+
+Two, models now can essentially hand off to helpers.
+
+And those helpers are called sub agents.
+
+And the reason why a subagent is helpful is
+
+The the model has kind of its working memory of the process that it's on.
+
+And that's gonna fill up eventually.
+
+Uh so it's nice if it can hand off to these helpers that have a fresh
+
+Set of working memory.
+
+And that effectively can give it
+
+an unlimited context basically, where it can go and do work that might be expensive in terms of the tokens it's using or the tools that it's calling, and then come back to the main agent and report its updates.
+
+And I'll have some diagrams of that later.
+
+Um
+
+Models now not only are just better at calling tools, I mean just a few years ago they basically couldn't call tools very well and they would hallucinate all the time. It's funny you don't really hear people talk about hallucinations anymore because it's kind of a solved problem mostly.
+
+Um
+
+But not only can they call tools, but you can give them very powerful tools, the same way as if you onboarded somebody onto your team. So obviously running shell commands and files, but also you give them a full computer, a full Linux uh computer. You allow them to make demo videos and such.
+
+Um they can click around on a screen just like a human would, and they're getting increasingly better at doing that, uh otherwise known as computer use.
+
+Which basically means that any SaaS product or any website
+
+That didn't expose an API or an MCP server can be used headlessly.
+
+basically so autonomously through uh computer use by these models and these bots.
+
+Um
+
+You can store all of the information in files.
+
+And the reason you can do that is because it's actually very easy for the models then to recall and search this information, which we'll talk about. And then finally you can just kind of show the bot how to do some work.
+
+And it will
+
+kind of turn that into skills or memories or routines or things that it can reuse later.
+
+So on the file thing, for example, this is kind of a simplified example, but you might remember or you might uh imagine that
+
+when you're working with a bot, under the hood it might look something like this.
+
+You build up this
+
+profile or this understanding of the user, and that's going to be included in every single prompt. Maybe you like lowercase text like messaging and every single message should have that.
+
+Also
+
+as you're working with these bots over time, you're building up a kind of like a working log, just like if you were working with a colleague and they were writing down notes every day of the work that they've done. That's all being put into files that the model can then decide to search or use later if you say, hey, what did I do last week? It just can can go and look that up.
+
+And the models are very good at using
+
+Linux commands running shell commands to go grep and search and look through these files.
+
+А симларліт скилл.
+
+You essentially
+
+Taking your knowledge of how to do a specific task and encoding it into a markdown file, the very specific process you need to do, the things that you believe make that uh successful or unsuccessful. And that's not just your skills, there's a whole ecosystem now of companies and developers.
+
+Um writing these skills for
+
+how to send a great email or how to build a great API or many different things.
+
+Uh and and for example in Grokbot there uh is a whole system of plugins. So basically any tool that you want to use, there's a plugin you can install which uses skills or servers.
+
+And then also routines, which if you're familiar with cron jobs, you know, you're running some
+
+Prompt basically on some kind of schedule. Which
+
+is pretty useful as well. So basically everything is computer.
+
+Um part three.
+
+So let's go a little bit further into the kind of the mind of this always on agent or going behind the scenes.
+
+Um
+
+What does it mean?
+
+For the agent to be always on. You can kind of read this chart from
+
+left to right, but it starts out with the server being asleep.
+
+And also this computer that the agent can use being asleep.
+
+And so whether you send in a message or some kind of
+
+Trigger
+
+uh decides to make the agent start up, which we'll talk about in a second. That's basically loading up
+
+and booting up all of the state for this agent and it's running on a server.
+
+If it decides that it needs to use a computer, maybe it wants to go use the computer's browser or you know go click around in the computer, it can start up the computer as well.
+
+And then once you're done using it, it also has the ability then to basically put those to sleep.
+
+Why is this important? It would be, you know, expensive and also uh
+
+Yeah.
+
+There's not enough computers in the world to just have those computing all of the time uh for everyone, as well as that's a lot of server usage too. And so this state can then be persisted to uh you know a database, the the conversation logs, the memories, the routines, all of that.
+
+Um
+
+How does the agent get woken up then?
+
+Well, obviously you can prompt it directly, but I think what's increasingly interesting
+
+is having other things running in the background that can then decide when you want to go reach out to your bots.
+
+Uh maybe that is somebody pinging you on Slack and your bots can live in Slack.
+
+Maybe that's a phone call or a meeting that you put your bot in. It's increasingly common now at SpaceX where we see bots joining meetings for employees where they could make it to the meeting, but they want their bot to go and just take notes and come back to them, which is kind of funny.
+
+Maybe you had some routine or some background work that was taking, you know, hours or days to do and then you want to come back and give you a summary.
+
+That all happens.
+
+Then we have basically a router that dedupes that.
+
+and figures out how to put it into the conversation and then it's
+
+has this heuristic of
+
+Do I need to bug the user about this or not? Because not everything is actually important. Just like if you have a c a co-worker working on something, it would be pretty annoying if every single time they made progress on something, they came and bugged and were like, hey, check it out, like I made progress on this thing. You really only need a status update, maybe, I don't know.
+
+Every day depending on the task.
+
+Um so I talked about how the agent has this computer.
+
+This Linux box.
+
+Um this is running a firecracker virtual machine, and the reason this is really helpful is because it's it's very easy then to essentially snapshot the state of the machine and shut it down and start it back up.
+
+And on this machine, you of course have files.
+
+but you can kind of connect into the machine and have a live view of the machine and actually control it yourself if you want.
+
+Um the machine can of course run commands, which is great if you're gonna run some shell commands, maybe you don't want it on your personal laptop, you want it in this other environment that is, you know, secured and locked down.
+
+And then another interesting thing is of course it has Chrome and it can use a browser.
+
+But you can also make it essentially have like virtual desktops.
+
+So if you're running
+
+five bots, ten bots, and each one of them needs their own browser.
+
+you can essentially let them have different screens. And all of this again is kind of shared infrastructure between these bots where they can go call on these computers.
+
+Um so we talked about kind of the the triggers that will wake up the agent and that's kind of on the left, so different apps or Slack messages or emails.
+
+Then you have this middle piece, which is the server, and then on the right is the computer that we just talked about, where you can run files and commands and other things.
+
+Let's talk a little bit more about the server. I already mentioned commands will come in, they get put into this queue, and then it calls the purple box, which is the agent loop.
+
+And this is what we covered last week. Like this is
+
+A model calling tools.
+
+In a loop.
+
+And then
+
+when you shut it down, you can kinda save the state to the database or storage.
+
+Um so it's like it's it's interesting, I think, to look at this and realize there's this one kind of small piece that can then have all of these abstractions built on top to create
+
+Uh a very powerful product.
+
+uh when you give it all of these helpful tools and you connect it to all of these different services.
+
+The reason the agent runs on the server
+
+is
+
+Uh a pretty common practice in computing where you want to have
+
+Kind of a
+
+thin client and a thick server and computing has kind of oscillated between these things over the years, but
+
+For example, a few good reasons for this is let's say you need to push an update to the agent code.
+
+it would you know kinda suck if you had to push an app store update just to get that code out there versus just pushing a bunch of server updates very quickly. Um also sometimes you need to do heavy computation work.
+
+you know, like transcription or image generation or something, and that's probably gonna be faster on a server than on device, depending on uh what the devices are.
+
+Um and you know, it's there's very established ways that we know how to scale servers, especially with
+
+variable traffic and variable growth.
+
+Um but the most critical thing here
+
+is that if you put the agent loop
+
+on the virtual machine, then you can't shut down the virtual machine independently from the
+
+uh from the agent server. So yeah, you want to save everything on the server, um so you can always kind of rebuild that virtual machine. For example, let's say you need to do
+
+some critical zero day Linux uh update on the on the VM, well it would be great to be able to rebuild that and not blow away the entire agent loop and have downtime in the application.
+
+Um
+
+Uh when you hit send, this is maybe uh a little in the weeds, so I'll just kind of gloss through it, but basically um if you want to dig more into learning more about distributed systems and thinking about um
+
+you know, strong versus eventual consistency, which are just fun topics to get into. You know, you send a message and you kind of want the client to immediately identify that and acknowledge it.
+
+Then when you go into the turn, you're obviously putting these um
+
+tools and a loop with the model, saving that to the database.
+
+And then the clients are essentially putting
+
+subscriptions with all of the servers, so they know if something changed and they're listening for these signals. And if they get a signal, then they can go and essentially fetch the latest information from the server. And there's some fancy deduping you can do to make sure if
+
+You know, if there were some kind of retries.
+
+um that you would not show you know multiple messages in the the list
+
+And so uh the like underlying infrastructure primitives to think about here
+
+Uh
+
+is a workflow versus a job queue.
+
+And
+
+The main difference here is with the job queue, let's say you're kind of
+
+Going along on steps, you ask your agent to go and do some kind of complicated task.
+
+Uh and it's making its way from step one to step two to step three, but then
+
+For some reason there was an infrastructure issue, um, there was some problem. With a normal Q, if that crashes and you go to restart it, well now you have to replay steps one, two, and three, which is obviously that that could be pretty problematic.
+
+So what you really want here is you want a durable workflow.
+
+Which means that it's safe for you to actually retry that.
+
+And when you retry after a failure, it picks
+
+right up on step three.
+
+And this is like
+
+kind of a solved problem in some ways in
+
+um distributed systems and an infrastructure. So we use an open source
+
+uh tool called temporal, which is interesting to look into if you're if you're curious, so that we don't have to rebuild a lot of this very complicated stuff from scratch. Of course you still have to run the infrastructure for it, but
+
+Some of the pieces to put together there.
+
+Um
+
+So
+
+Let's say a new message comes in.
+
+There's
+
+Different priorities based on whether
+
+I'm messaging my agents or messaging my bots versus if it's in a group chat or a Slack thread or some background routine, for example.
+
+So if I say, oh, actually, you know, change the date for this event.
+
+We actually want that agent loop to stop.
+
+And my message is gonna have priority over everything else that's happening, which kind of makes sense.
+
+Um for everybody else, you're kind of putting things into the queue in the back of the line, and if you're if the the agent gets you know three or four messages very quickly, it's able to kind of batch those together, so it's just one turn. You can kind of figure out whatever heuristic you want there.
+
+Um and then it kind of goes through and does each turn.
+
+at a time.
+
+Okay.
+
+So let's talk about the the harness itself, and this is
+
+Gonna kind of take the
+
+the basic harness that we talked about last week and add some some new tools, some new concepts.
+
+The biggest difference with the Grockbot harness
+
+Um and
+
+probably some of the other tools like this uh on the market is
+
+The way we've done the thin client thick server architecture is there's only one tool.
+
+that communicates between the client and the server.
+
+And it's just send user.
+
+And the great thing about this is that it's actually very
+
+Architecturally simple.
+
+Where the client is just
+
+Texting the server in some ways, and you're putting a lot of these heavier tools on the server.
+
+And there's many of those tools. There's running shell commands, reading files, but also calling on a cloud agent or recording your screen or doing demos, for example.
+
+Um and this I I think has worked pretty well because now regardless of where you spin up a new client, whether it's a mobile app,
+
+A server, um a desktop app, uh email Slack. It all just has this one single tool that communicates back and forth with the server.
+
+On the client though, even though it just has this one tool.
+
+When it received the tool, it can decide how it wants to display that in a rich and interactive way that makes the most sense for the user. So if it gets uh information back from the server that
+
+The user's trying to log into something, it can kind of show these unique sign-in forms and connect to tools like OnePassword. It can go and call on services like
+
+uh Stripe Link or use X Money or uh other services to go and allow people to pay for their services. You can
+
+If you're trying to do something that is non uh is it you can't reverse it sending an email or a Slack message.
+
+it might come back and ask you to you know edit and approve a draft before you send it.
+
+And then sometimes.
+
+You can know you can just leave an emoji reaction if you don't actually need to uh send a message.
+
+Um so going back to what I was saying.
+
+With
+
+Dynamic tool discovery.
+
+So for uh for any model, there's a context window.
+
+Which is kind of its working memory.
+
+And that's some limit in tokens.
+
+And
+
+If you just jam every single tool possible into that.
+
+uh context window, you're not gonna have a lot of space.
+
+And the way the tools work is you have kind of the the name of the tool, you have the schema, you have all these different details.
+
+And
+
+If you start installing your
+
+Google Drive connector, your Gmail connector, your YouTube connector, like all these different services.
+
+that use MCP servers.
+
+Which all have tools.
+
+You're gonna start looking at something like the top.
+
+Where a lot of the blocks are already filled.
+
+Uh and the problem with that is it doesn't give the model as much space to actually do the work of the conversation.
+
+Um
+
+So one kind of
+
+context engineering or harness trick um that a lot of the the m popular harnesses now use is uh it's called dynamic context or s I think uh some other folks call it the tool search tool, which is a fun name. But basically you're only putting the names of the tools into the
+
+every message that gets sent to the model.
+
+And then the model can decide
+
+Okay, I actually want to go use this tool. I can go read the information from a file.
+
+It's kind of files in a file system all the way down for all of these things.
+
+Uh and that just helps you save on your context usage, which then also helps save on cost, save on usage, just better for everybody.
+
+In general, the principle here really is
+
+To try the cheapest option or the most reliable option first.
+
+And kind of work your way up the ladder here, so
+
+The easiest one is just what
+
+you know what the agent or what the bot already knows based on the conversation history.
+
+Uh if it doesn't if it's not in the immediate context.
+
+Maybe there's a plugin, an MCP server, some kind of API that it can go and pull your uh
+
+Your banking information from Plaid, for example.
+
+Uh maybe that doesn't work and it needs to go do some kind of web search to see, you know, what was the score of the Cubs game last night.
+
+Um
+
+Maybe if it doesn't have that, it actually needs to go to
+
+the computer and open up the browser and do some searches on there.
+
+And finally, like maybe it needs to go and actually use the entire desktop, so run scripts or run commands or build things on that Linux computer. And only if all of those fail, then go bug the user and ask them to go give input or approve something.
+
+And this really helps it feel like
+
+what it would be like to work with a colleague is like they're not gonna bug you for all these different things. Ideally they're gonna try a lot of these options first.
+
+Um
+
+On that computer. So the
+
+the Linux machine that the agent is able to use.
+
+There's kind of three different ways that it can retrieve information from it.
+
+Um of course it can just take a screenshot of the screen, but there's more efficient ways of doing this.
+
+Um
+
+It could also look at the HTML of the page, but you can also look at the accessibility tree.
+
+Which is a nice way of like cutting down a lot of the
+
+uh token usage and basically to help you find the buttons or links or other elements that you want
+
+uh the browser to click on.
+
+Uh of course, if none of that works, you can just click on pixels.
+
+So some websites, for example, have
+
+modals or dialogues that pop up that you need to click.
+
+Uh and so y your model, your agent needs to have that functionality as well. Or again, kind of worst case on that ladder is you go back to the user and like, oh there's a like a two factor off code or there's some kind of CAPTCHA or or something like that.
+
+Um so the idea
+
+is that
+
+Kind of putting the pieces together, you have this main agent.
+
+And it's kind of like your
+
+Orchestrator.
+
+And the main agent you want to keep the
+
+Conversation as sparse as possible.
+
+Because
+
+it now has the ability to go call on all of these different helpers. And the helpers are just sub agents.
+
+And so this is helpful because if you hand it off to a helper to go run a bunch of shell commands or do a lot of expensive tool calls.
+
+All of that work that ultimately is ending up in some answer to a question or a task.
+
+None of that is bloating the conversation and the context.
+
+of the main agent. It's only coming back with the result.
+
+And this is how you get to a product that feels like it has infinite context.
+
+Obviously there are
+
+Infinite context is not a real thing. Every model has a context limit, but there are these tricks and workarounds such that.
+
+Especially when you train models to get better at this, that it doesn't feel like you're running up against the limits of the context window and you don't feel uh
+
+degradation of the model's quality.
+
+as you get further along that as well.
+
+So we have these different helpers, each with different skills.
+
+Each one of these is its own durable workflow.
+
+So going back to the cues versus workflows thing, that means if it fails, the video helper crashes.
+
+uh something you know uses up too much memory or something, that can restart and keep going without losing progress along the way.
+
+And then the main agent
+
+It it is kind of like a coworker where it's managing a to do list.
+
+You have a few things you can do. You can go check on it, you can send it a message, you know, you can stop the helpers, for example. Um and so a lot of this is modeled after the ideal way you would scale uh a team of engineers working on a very complicated problem.
+
+So
+
+Uh like just a few little interesting tidbits from
+
+building this out on the team. Um
+
+I think
+
+We'll talk a little bit more about prompt caching here, but
+
+Um ideally you don't add or remove new tools during turns.
+
+Um and just like I mentioned with the slide with all of the
+
+Uh boxes.
+
+If you have extremely long tool descriptions or schemas, that's gonna take up a lot of space in the context window, which is bad for pricing, it's bad for usage.
+
+ideally you want to minimize that. So there's plenty of optimizations you can make here in on the engineering side to just trim that down.
+
+Um
+
+Another interesting one is like
+
+You might hear people talk about how, oh, like we can have a harness that just has one tool. And that one tool is like running shell commands.
+
+And this is true, and you can model a lot of things this way, but if you see the model doing, you know, 90% of its time doing shell commands for this one thing, it actually can be more efficient to make a dedicated tool for some of that stuff.
+
+Um and it's it's uh a bit more legible for people actually reviewing.
+
+how the product is working.
+
+Uh and the last one's kinda funny too. Uh obviously if you're writing errors for humans, it's helpful to make it very descriptive, like, okay, this thing failed, like click on this link or here's what you need to do next.
+
+Turns out that's also very helpful for agents. So there's there is some DX in designing um good error messages for agents too.
+
+And
+
+When you're trusting your bots to go and do work over a long period of time, it is very important that you trust them.
+
+to be secure with your information.
+
+To be secure with how it operates. So even
+
+working on its own separate machine, not polluting anything on your machine, still you would like it
+
+Yes.
+
+You know, uh a model reviews every shell command before it goes.
+
+So auto review. It would be great if
+
+You know, when these untrusted inputs like uh email in your inbox
+
+could be a phishing email or some webhook. You don't want to send that to the model and act like it was a user instruction. And there's plenty of work to do here in the industry on just making sure that that is
+
+uh properly protected from
+
+Um
+
+Prompt injections.
+
+Um
+
+For these kind of
+
+Uh non-reversible things like sending emails, right? You want to really ask the user first. And then also you can build in some workflows into the product to keep passwords and other things outside of the model conversations.
+
+Okay.
+
+Context engineering is
+
+Al also known as harness engineering, like I feel like it's kind of the same thing, they've evolved over time, but basically what are some tips and tricks we can do to minimize the amount of context that's being used in these harnesses?
+
+Um which is good for efficiency for reducing costs.
+
+Um and other reasons.
+
+I talked about prompt caching.
+
+Um, this is a good example of why it's really important. So if you think about when you're working with uh a coding agent or any agent.
+
+Most of the tokens used are actually ideally
+
+cached tokens because you're sending in a conversation and then you're doing a change, you're you're adding one more message, and then you're basically resending the entire conversation over again. So if you look at the pricing for models,
+
+There's huge discounts of course on if a token is cash, and you want to keep
+
+them in the cast window as long as possible. And so a way to do this is you try to keep the
+
+tool definitions, the system prompts.
+
+All this information
+
+As static as possible between different calls, so that you don't
+
+break the cache and then have to pay for the uncached tokens every single time. So if you have that fixed part at the top, then you know when you get down to the bottom and you only have the newest message that comes in, that's the only delta that you're paying the uncached tokens for. And there's a a whole art
+
+And science uh to this as well.
+
+Basically because that main agent
+
+in the most ideal sense, this is the one you're having this very, very, very long conversation with.
+
+That's
+
+c uh compacting or compressing, so summarizing the context many, many times over.
+
+Uh
+
+without you even noticing sometimes, which we'll show an example of. So you really want to keep that context small.
+
+Um
+
+Some ways of doing that is any time there's a very long output, rather than stuffing that in the context.
+
+You can just put it in a file.
+
+And the Asians are very good at reading files. Uh so this actually works pretty well, which is just like reading a skill or reading a memory, for example.
+
+If you give the model
+
+А скриншот.
+
+um or some other very expensive work, you just delegate that out to a helper. Again, so it goes to the sub agent.
+
+And it doesn't affect the main agents context.
+
+Um
+
+And then also
+
+In an ideal world
+
+You want to kind of be always gardening
+
+and trimming and removing unnecessary stuff from this conversation, from this contact window, as you're going, both for cost, but for also
+
+recall and just making sure the model's performing well.
+
+So if there's a cash miss, it's kind of like a bug in the system, really.
+
+Um and if
+
+Yeah.
+
+If you go all the way back to uh
+
+All the way back to January of this year, uh when OpenCloud was really getting popular and people were using it uh inside of subscription plans for uh model providers.
+
+This was a very new usage pattern that model providers hadn't really seen, and the the harness
+
+hadn't really yet been optimized for this type of workflow. So there was a lot of cash misses.
+
+And when you're doing something like this where agents are running all the time,
+
+That's obviously problematic, so lots of fixes uh had to go in to make that robust to keeping the cash uh
+
+Uh keeping the prompt cache as much as possible.
+
+Um so like a fun
+
+a a fun trick here is just trying to keep
+
+everything in the prompt in order such that even if you deploy a new change where you want to test out some new change to the system prompt or add a new tool, you can
+
+You can almost hash each section and always keep a fixed order.
+
+Like let's say you're doing an A B test and you wanna put a new piece of the prompt in there. You really don't want that to screw up the prompt order for everybody else, otherwise you just busted the cache uh and then that's
+
+That's problematic.
+
+Um
+
+Another fun one is
+
+When you open the chat and you start typing
+
+Um the server can actually go and prepare the prompt early.
+
+Uh to basically warm the cash almost like
+
+If you're on a website and you go to hover on a link, it can go and prefetch the next page.
+
+Um so there's like v tons and tons of little
+
+engineering optimizations that compound
+
+how far these models can go in terms of token usage uh and how smart they can be when you use them for very long periods of time.
+
+And the key thing is that
+
+when you're working over a very long period of time, you essentially have to get very good at compaction or summarization. Because let's say the model has a two hundred thousand token context window, you're going and going and going, eventually it's gonna hit a point where it needs to summarize, and all compression is lossy.
+
+So you have to figure out the best
+
+algorithm to do the compression and not lose important details. And there's I'm sure entire uh PhDs just for this problem. Like it's very it's very, very tough to do, right? But just to show an example, like let's say you're going back and forth with your
+
+w with your bot, uh you have over a hundred thousand tokens, uh and then you go and do something else.
+
+Well, there is this time period where the model providers have uh like a cache window when the cache is still warm.
+
+Maybe it's ten minutes, maybe it's sixty minutes.
+
+Uh one trick that we do, which I think is really helpful, is while you're still within the warm cash period.
+
+You should probably do the the compaction right now.
+
+because it's you have this long conversation, it's gonna be much cheaper. So just go ahead.
+
+Do the compaction and now when the user comes back.
+
+in thirty minutes or whatever, they're starting from this summary.
+
+And the summary now is gonna be much cheaper for them to continue
+
+adding messages on. So lots of work to do there to make it um
+
+to make the algorithm very high quality for how you do the summarization.
+
+When you talk about compaction
+
+And what information you choose to include in the agent's memory. I kind of think about it in a few different layers.
+
+The first one is
+
+like facts about the user that are very important to be included every single time.
+
+Going back to earlier when I said oh like the user always wants to have
+
+Lowercase text.
+
+That probably needs to be in every single message, otherwise it would be really weird if
+
+One message now has uppercase letters.
+
+Uh if you're going like full Sam Alton style.
+
+Um
+
+Then uh you probably also have some prompts that you want or some facts that you want to include in there.
+
+And there's many different ways you can make this algorithm to determine what are the most important facts to keep.
+
+So ideally there's this kind of garbage collection of this fat and like if you think about it.
+
+This is kind of how our brains work.
+
+It's like this fact right now is important to keep, it's relevant for this conversation today. You're probably not thinking about a soccer match right now. And your brain is very good at keeping those ones in context right now and kind of remembering them for later.
+
+We try to model some of that here where
+
+The the the harness has, of course, these core facts.
+
+It also has these dated logs of kind of your past
+
+Conversation history essentially.
+
+And then also these kind of
+
+Scratch pad notes.
+
+So just like little things that you've been working on right now that are designed to be ephemeral and they will go away, but they might be relevant just for the next thirty minutes or an hour.
+
+And everything else.
+
+can be found through files.
+
+This is the magic of files, of the models being good at running commands, is like they can always just go look stuff up.
+
+And they're actually very good at doing that.
+
+So where where is this going?
+
+There's this flywheel.
+
+of training the model to get better at the product.
+
+And just as a
+
+high level refresher on kind of the stages of training a large language model. Uh first you have pre-training where the model learns
+
+a general understanding of the world.
+
+from large amounts of internet text or other private data.
+
+Then you have supervised fine tuning where you're teaching the model how to behave.
+
+uh in a certain way maybe a as a chat assistant or as an agent
+
+And then finally you have reinforcement learning, where it's kind of like teaching the model how to play games.
+
+And get better at those games.
+
+Um
+
+And in the context of these OS on agents,
+
+It's very helpful, for example, to
+
+Train the model to see examples of the harness and to know how to work.
+
+inside of the harness in SFT.
+
+Um so it can understand the tools that you have available. It's helpful to train the model to
+
+be better at instruction following during reinforcement learning.
+
+How to
+
+Understand the right skill to call when there's hundreds of skills.
+
+for example, how to click on the right spots when you're given it a browser and it needs to kind of click around.
+
+Um
+
+And not only the training itself, but also how you serve the model, the inference that you do.
+
+The main agent you're talking with
+
+You know, ideally you want it to have very low latency. You want it to come back to you right away, give you really fast replies, and you can tune the harness and the inference to do that.
+
+But then when you go hand it off to a helper and you're asking it to go do some work for a very, very long period of time, the difference between 10 minutes and twelve minutes is kind of negligible at that point. So that allows you to kind of control
+
+Uh how you optimize things.
+
+Um the way that this kind of
+
+Flywheel works.
+
+is that let's say your agent gets something wrong.
+
+Um ideally then that gets turned into some kind of evaluation. So uh the model you know accidentally uh called this tool when it wasn't supposed to.
+
+Uh then
+
+On the back end, you can go and fix the harness.
+
+You can fix the bug, you can fix the prompt.
+
+Maybe it's an inference issue.
+
+Um you can check and make sure it's actually fixed in the evals and then ship the change.
+
+Uh and
+
+Yeah, the the teams
+
+Uh and the products uh the teams working on these products, they're kind of doing this every single day. They're finding bugs, they're fixing it.
+
+They're measuring it with evals. That's kind of his inner loop that you're always getting better at.
+
+But then there's this outer loop, which is like every few months or every month or however long, um you're training new models.
+
+And ideally the new models are learning from all of these bugs and these failures.
+
+and they're kind of climbing on the evalu to get better at the things that you care about.
+
+And you can drop the new versions into the product and make sure that they're improving at all these different things.
+
+And the fun thing about this is then when the new models come out, they have new capability jumps.
+
+Um it allows you to use the product in new ways.
+
+So
+
+There hasn't really been a lot of training data, for example, on
+
+Using bots in a group chat. This is kind of an emergent thing that's being figured out, uh, and it's important to get it right. Obviously, uh if you've seen things like MoldBook or the Huggy Face incident, like there are ways that that goes poorly. So it's important to be able to train the models how to behave well in a multi-agent system where uh different bots are talking to each other, for example.
+
+Um
+
+And so
+
+Ideally you're always kind of running these inner loops and outer loops.
+
+uh as a product team building these type of harnesses at a company uh working on on AI together.
+
+Um one of the principles that we had at Cursor uh and now uh at SpaceX
+
+Is
+
+To delete the product.
+
+And what we mean by this is
+
+You kind of have to internalize and assume
+
+That the models today are the worst they'll ever be.
+
+Which means that in six months
+
+Uh you might need to completely rebuild the UI.
+
+Like most of the stuff that I've talked about today, uh it's
+
+A pretty big update from if I would have given this talk six months ago or definitely a year ago, because we've learned a lot of
+
+uh new practical ways of
+
+building harnesses and doing context engineering.
+
+So a good strategy here is you really want to try to build for the next generation of the model, like
+
+How do you build as little as possible and get by?
+
+Uh while making just a really, really simple interface to work with these models and allow them to uh to to think and act for you.
+
+So um some things that I think will happen in the next
+
+Six to twelve months. We'll see. I think these are
+
+Decently safe bets, but uh you know, right now let's say you have your agents or your bots working for maybe a few hours.
+
+Maybe a day depending on how
+
+Tough it is. I think it's very possible that pretty soon um your agents will be working for weeks.
+
+Or months.
+
+Uh and it does bring up some kind of interesting questions.
+
+in terms of how we train and evaluate those models.
+
+I think the models are gonna get better and better about how they recall on
+
+past information in in conversations.
+
+Plenty of different approaches in research here for the type of algorithms used or the
+
+representation of the data under the hood. Maybe it's a graph, maybe it's files, maybe something else.
+
+Um
+
+I think ideally if you have this digital colleague, you give it literally all the tools that you have, uh if you were onboarding a real human. And so I think
+
+organizations are still warming up to that idea, of course. So there's a more to do there.
+
+I think the interfaces uh will maybe get even easier. I think some people will prefer to just talk to their kind of bots or agents. Uh
+
+as a in a speech to speech way, maybe they'll have their like
+
+uh Johnny I've device that is hopefully really cool and they can like talk to that uh all day.
+
+Um
+
+I think the models and the products will get really good at
+
+um learning skills on the job and then encoding that into files in instructions, skills.
+
+uh taking that raw intelligence and actually making it useful for whatever uh whatever task you're asking it to do.
+
+And people and companies um
+
+uh writing down how all of these kind of bespoke processes work so that they're legible for agents to use.
+
+So some interesting problems I think that like could just spark
+
+ideas for you all to to research or to look into. The first one is like going back to this idea of agents that run for a month.
+
+What do you do when you need to evaluate an agent that runs for a month?
+
+But the models ship every month.
+
+Yeah, it's like
+
+You can't fully evaluate that the model is uh sufficiently
+
+uh behaving as expected. So you either have to figure out how to do a better eval or you know not ship models as fast.
+
+And I think that's
+
+gonna be a problem that the industry has to figure out in the next six months.
+
+Um memory, obviously the we talked about the different algorithms. I think
+
+There's so much to do on the security side for how to make
+
+A secure harness.
+
+how to make the infrastructure around these agents um very secure uh and so they can't be taken over by bad actors.
+
+I think
+
+We didn't really talk about it too much, but
+
+The heuristics around when the agent is silent or when it kind of bugs you.
+
+Uh I don't think that we have it perfect yet.
+
+Trying to thread the needle between
+
+being proactive and suggesting like, oh hey, like I saw that you missed class yesterday. Like I w I I had a a recording there and I took the notes and like here's the thing, like maybe that's helpful or maybe that's kind of annoying. You know, and like trying to figure out the right
+
+The right balance there.
+
+Um
+
+I also think that
+
+It's a pretty safe bet to assume that
+
+At this time next year, there will be significantly, significantly more tokens flowing in the world, which means that optimizing the inference, optimizing the models, optimizing the harnesses, trying to drive down
+
+The tokens to uh be more efficient.
+
+Well also the the token usage to be more efficient, I think will also be very important.
+
+So there's kind of these new building blocks to think about. I believe it was Alex from Open Router that I saw on on X. He had a really good take on this. And there's people saying like, Oh, every app today looks the same. You've got the sidebar, you know, you've got the agent, we got the chat box, like everybody's building the same thing.
+
+And he was like, Yeah, that's like in two thousand five, he said, Everybody's building the same thing, they've got a server.
+
+You got a data base.
+
+They've got some like CRUD interface to like update and delete things.
+
+And the reality is
+
+This is just kind of the new normal now where
+
+Every new product is gonna have to have some kind of
+
+uh a gentic side to it, either integrating or it will become a uh you know a headless piece of data for another agent to use.
+
+Um and so we've talked about a lot of these products today, durable workflows.
+
+Um sandboxes, computers in the cloud, memory skills, uh
+
+Connecting to other services, doing voice
+
+payments, identity, evals, observability. Each one of those boxes is like
+
+multiple billions of dollars of V C capital, probably trillions. There's twenty startups for each one of those. And there's so many different things to explore in all of those because they kind of are the new primitives.
+
+For the next generation of companies.
+
+The next generation of products.
+
+And they all have to integrate and be part of harnesses. So there's
+
+There's definitely a lot to do there.
+
+A few things uh to take away and then we'll have time for questions. Obviously you all are engineers, you're thinking about how to write software. It's more important than ever to think about the broader system design and the architecture of the code that you're working on, because that
+
+The decisions you make there will really compound.
+
+Um so I'm still I'm still pro looking at code. You know, I still look at the code that I'm writing, some people not looking at the code. I still think it's helpful, uh especially to understand the architecture that you're shipping. Uh it's crazy how much that's changed in just a couple years.
+
+Um secondly, you know, it sounds like y'all were kind of messing around with building own versions or understanding of how the harness worked in uh last week.
+
+Uh
+
+I encourage you to
+
+think about some of the things that I did today and try to apply that and think about how you might build a version uh for yourself.
+
+I'm pretty sure there's like open Grockbot on GitHub somewhere where somebody's like
+
+you know, slot forked uh our code and made and made a version. Uh and you could probably set up like the the GUI for that with
+
+you know, a sandbox somewhere and uh you know a uh a VM and like all sorts of different things.
+
+Um so that could be interesting if you want to learn a little bit more about how these pieces work.
+
+And then finally
+
+Um
+
+I would not shy away from just learning a little bit more about how LLMs work. You know, we gave a a little bit of the TLDR here of how they're trained.
+
+But there's so much more you can go into here without necessarily going deep in ML or deep into the science part of it. But I think it's helpful to understand just like when you're building a web app, it's helpful to know how databases work.
+
+because increasingly the
+
+There are so many decisions you make at the product in the harness.
+
+uh level that are influenced by the models themselves and having an intuition of how that works I think will make you very well positioned for uh whatever role you're operating in.
+
+And uh that's all I have today.
+
+Thank you.
