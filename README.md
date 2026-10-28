@@ -77,6 +77,25 @@ The cool thing about these guys is that they have really, really, really long tr
 [00:05] The cool thing about these guys is that they have really, really, really long trunks.
 ```
 
+### On-screen content (`--visuals`)
+
+Slides, code, and diagrams are captured alongside the speech: the video (≤720p) is downloaded, keyframes are picked where the scene changes (near-duplicates dropped), and each one is sent to a vision model on [OpenRouter](https://openrouter.ai) together with what was said while it was on screen.
+
+```bash
+cp .env.example .env   # then set OPENROUTER_API_KEY
+uv run yt-transcriber -t --visuals "https://www.youtube.com/watch?v=..."
+```
+
+```
+[12:30] [SCREEN]
+    Agent loop
+    - plan → act → observe
+
+[12:30] So the core idea here is that the agent keeps looping until…
+```
+
+The model (`OPENROUTER_VISION_MODEL`, default `z-ai/glm-5.3-flash`) must accept image input. Frame selection and the per-video frame cap are tunable in `.env`; see `.env.example`.
+
 ## Architecture — designed for the web deployment that comes next
 
 This codebase is deliberately split along the same boundary the production web app will use, so productionizing is a port, not a rewrite:

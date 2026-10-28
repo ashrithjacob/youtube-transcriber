@@ -39,21 +39,39 @@ def _ffmpeg_exe() -> str:
     return imageio_ffmpeg.get_ffmpeg_exe()
 
 
+def _ydl_opts(fmt: str, outtmpl: str, quiet: bool) -> dict:
+    return {
+        "format": fmt,
+        "outtmpl": outtmpl,
+        "noplaylist": True,
+        "quiet": quiet,
+        "no_warnings": quiet,
+        # YouTube now requires solving JS challenges; yt-dlp only enables deno
+        # by default, so allow whichever common runtime is installed.
+        "js_runtimes": {"deno": {}, "node": {}, "bun": {}},
+    }
+
+
+def fetch_video(url: str, workdir: Path, *, quiet: bool = False) -> Path:
+    """Download a video-only stream (<=720p, enough to read slides and code)."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    ydl_opts = _ydl_opts(
+        "bestvideo[height<=720][ext=mp4]/bestvideo[height<=720]/best[height<=720]/best",
+        str(workdir / "video.%(ext)s"),
+        quiet,
+    )
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        return Path(ydl.prepare_filename(info))
+
+
 def fetch_audio(url: str, workdir: Path, *, quiet: bool = False) -> AcquiredAudio:
     """Download the audio-only stream for `url` and transcode it to 16 kHz mono WAV.
 
     Intermediate files are written to `workdir`, which the caller owns.
     """
     workdir.mkdir(parents=True, exist_ok=True)
-    outtmpl = str(workdir / "source.%(ext)s")
-
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": outtmpl,
-        "noplaylist": True,
-        "quiet": quiet,
-        "no_warnings": quiet,
-    }
+    ydl_opts = _ydl_opts("bestaudio/best", str(workdir / "source.%(ext)s"), quiet)
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         source = Path(ydl.prepare_filename(info))

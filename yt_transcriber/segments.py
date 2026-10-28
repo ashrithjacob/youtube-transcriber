@@ -19,3 +19,15 @@ class Segment:
     """End time in seconds."""
     text: str
     """Transcribed text for this stretch."""
+
+
+@dataclass(frozen=True)
+class VisualNote:
+    """What was on screen for a stretch of the video."""
+
+    start: float
+    """Time in seconds the frame was captured."""
+    end: float
+    """Time in seconds the next distinct frame appears (or the video ends)."""
+    text: str
+    """VLM transcription/description of the frame."""
